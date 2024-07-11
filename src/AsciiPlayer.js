@@ -1,10 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 
-export const AsciiPlayer = ({ videoRef, settings}) => {
-    const canvasRef = useRef();
 
+/// biggest MAX_PIXEL_AREA you can choose
+const MAX_PIXEL_AREA_LIMIT = 50000;
+
+/// TODO: make these constants configurable
+const ASCII_CHARS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"];
+const WIDTH_SCALE_FACTOR = 1.8; 
+const MAX_PIXEL_AREA = 50000;
+
+export const AsciiPlayer = ({ videoRef, settings }) => {
+    const canvasRef = useRef();
+    const preRef = useRef();
+
+    // dimensions = [width, height]
+    const [dimensions, setDimensions] = useState([0, 0]);
     const [asciiFrame, setAsciiFrame] = useState('');
     const [fontSize, setFontSize] = useState(10);
+
+    const [show, setShow] = useState(true);
 
     useEffect(() => {
         let handle;
@@ -25,7 +39,7 @@ export const AsciiPlayer = ({ videoRef, settings}) => {
         };
 
         function playAnimation(settings) {
-            const charPixelWidth = settings.charPixelWidth;
+            const pixelsPerChar = settings.pixelsPerChar;
             const highContrastMode = settings.highContrastMode;
             const invertedMode = settings.invertedMode;
 
@@ -33,11 +47,6 @@ export const AsciiPlayer = ({ videoRef, settings}) => {
     
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('2d');
-            
-            /// TODO: make these constants configurable
-            const ASCII_CHARS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"];
-            const WIDTH_SCALE_FACTOR = 1.8; 
-            const MAX_PIXEL_AREA = 50000;
 
             if (invertedMode) {
                 ASCII_CHARS.reverse();
@@ -47,12 +56,13 @@ export const AsciiPlayer = ({ videoRef, settings}) => {
             const base_height = video.videoHeight;
             const max_width = Math.sqrt(MAX_PIXEL_AREA * base_width / base_height);
             const max_height = Math.sqrt(MAX_PIXEL_AREA * base_height / base_width);
-            const width = Math.floor(Math.min(base_width / charPixelWidth, max_width));
-            const height = Math.floor(Math.min(base_height / charPixelWidth, max_height));
+            const width = Math.floor(Math.min(base_width / pixelsPerChar, max_width));
+            const height = Math.floor(Math.min(base_height / pixelsPerChar, max_height));
             canvas.width = width;
             canvas.height = height;
+
             setFontSize(video.videoHeight / height);
-    
+
             const updateASCII = () => {
                 ctx.drawImage(video, 0, 0, width, height);
     
@@ -81,8 +91,12 @@ export const AsciiPlayer = ({ videoRef, settings}) => {
                     }
 
                     setAsciiFrame(imageASCII.join(''));
+
+                    if (preRef.current.offsetWidth > 0 && preRef.current.offsetHeight > 0) {
+                        setDimensions([preRef.current.offsetWidth, preRef.current.offsetHeight]);
+                    }
                 } else {
-                    console.error("unsupported Colour Space: " + imageData.colorSpace);
+                    console.error("Unsupported Colour Space: " + imageData.colorSpace);
                 }
     
                 handle = video.requestVideoFrameCallback(updateASCII);
@@ -99,14 +113,28 @@ export const AsciiPlayer = ({ videoRef, settings}) => {
     }, [videoRef, settings]);
 
     return (
-        <div style={{ backgroundColor: settings.invertedMode ? "white" : "black" }}>
+        <>
+            <button onClick={(event) => setShow(!show)}>SHOW?</button>
+
             <canvas ref={canvasRef} autoPlay style={{ display: "none" }}/>
-            <pre style={{
-                color: settings.invertedMode ? "black" : "white", 
-                fontSize: `${fontSize}px`, 
-                textAlign: "left"
-            }}>{asciiFrame}</pre>
-            <video ref={videoRef} autoPlay style={{ display: "none" }}/>
-        </div>
+
+            <div style={{ position: 'relative' }}>
+                <video ref={videoRef} autoPlay style={{ 
+                    width: `${dimensions[0]}px`, 
+                    height: `${dimensions[1]}px`,
+                }}/>
+                <pre ref={preRef} style={{
+                    display: show ? "block" : "none",
+                    backgroundColor: settings.invertedMode ? "white" : "black",
+                    color: settings.invertedMode ? "black" : "white", 
+                    fontSize: `${fontSize}px`, 
+                    textAlign: "left",
+                    margin: "0",
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                }}><b>{asciiFrame}</b></pre>
+            </div>
+        </>
     )
 }
