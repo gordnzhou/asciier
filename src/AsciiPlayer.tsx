@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { ChangeEvent, RefObject, useEffect, useRef, useState } from "react";
 
 
 /// biggest MAX_PIXEL_AREA you can choose
@@ -9,44 +9,63 @@ const ASCII_CHARS = [" ", ".", ":", "-", "=", "+", "*", "#", "%", "@"];
 const WIDTH_SCALE_FACTOR = 1.8; 
 const MAX_PIXEL_AREA = 50000;
 
-export const AsciiPlayer = ({ videoRef, settings }) => {
-    const canvasRef = useRef();
-    const preRef = useRef();
+type AsciiSettings = {
+    pixelsPerChar: number,
+    highContrastMode: boolean,
+    invertedMode: boolean,
+};
+
+export const AsciiPlayer = ({ videoRef, settings }: { videoRef: RefObject<HTMLVideoElement>, settings: AsciiSettings}) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const preRef = useRef<HTMLPreElement>(null);
 
     // dimensions = [width, height]
-    const [dimensions, setDimensions] = useState([0, 0]);
-    const [asciiFrame, setAsciiFrame] = useState('');
-    const [fontSize, setFontSize] = useState(10);
-
-    const [show, setShow] = useState(true);
+    const [dimensions, setDimensions] = useState<[number, number]>([0, 0]);
+    const [asciiFrame, setAsciiFrame] = useState<string>('');
+    const [fontSize, setFontSize] = useState<number>(10);
+    const [hideLeft, setHideLeft] = useState<number>(0);
 
     useEffect(() => {
-        let handle;
+        let handle: number | null = null;
         let videoRefCopy = videoRef.current;  
 
-        if (videoRef.current) {
-            if (handle !== undefined) {
-                videoRefCopy.cancelVideoFrameCallback(handle);
-            }
+        if (!videoRef.current) {
+            return;
+        }
 
-            if (videoRef.current.readyState > 0) {
-                playAnimation(settings);
-            } else {
-                videoRef.current.onloadedmetadata = () => { 
-                    playAnimation(settings);
-                };
-            }
-        };
+        if (handle && videoRefCopy) {
+            videoRefCopy.cancelVideoFrameCallback(handle);
+        }
 
-        function playAnimation(settings) {
+        if (videoRef.current.readyState > 0) {
+            playAnimation(videoRef.current, settings);
+        } else {
+            videoRef.current.onloadedmetadata = () => { 
+                if (!videoRef.current) {
+                    return;
+                }
+
+                playAnimation(videoRef.current, settings);
+            };
+        }
+
+        function playAnimation(video: HTMLVideoElement, settings: AsciiSettings) {
             const pixelsPerChar = settings.pixelsPerChar;
             const highContrastMode = settings.highContrastMode;
             const invertedMode = settings.invertedMode;
 
-            const video = videoRef.current;
-    
             const canvas = canvasRef.current;
+            const pre = preRef.current;
+
+            if (!(canvas && pre)) {
+                return;
+            }
+
             const ctx = canvas.getContext('2d');
+
+            if (!ctx) {
+                return;
+            }
 
             if (invertedMode) {
                 ASCII_CHARS.reverse();
@@ -92,8 +111,8 @@ export const AsciiPlayer = ({ videoRef, settings }) => {
 
                     setAsciiFrame(imageASCII.join(''));
 
-                    if (preRef.current.offsetWidth > 0 && preRef.current.offsetHeight > 0) {
-                        setDimensions([preRef.current.offsetWidth, preRef.current.offsetHeight]);
+                    if (pre.offsetWidth > 0 && pre.offsetHeight > 0) {
+                        setDimensions([pre.offsetWidth, pre.offsetHeight]);
                     }
                 } else {
                     console.error("Unsupported Colour Space: " + imageData.colorSpace);
@@ -106,25 +125,25 @@ export const AsciiPlayer = ({ videoRef, settings }) => {
         }
 
         return () => {
-            if (videoRefCopy && handle !== undefined) {
+            if (videoRefCopy && handle) {
                 videoRefCopy.cancelVideoFrameCallback(handle);
             }
         };
     }, [videoRef, settings]);
 
+    const handleHideLeftSlider = (event: ChangeEvent<HTMLInputElement>) => {
+        setHideLeft(Number(event.target.value));
+    }
+
     return (
         <>
-            <button onClick={(event) => setShow(!show)}>SHOW?</button>
-
-            <canvas ref={canvasRef} autoPlay style={{ display: "none" }}/>
-
+            <canvas ref={canvasRef} style={{ display: "none" }}/>
             <div style={{ position: 'relative' }}>
                 <video ref={videoRef} autoPlay style={{ 
                     width: `${dimensions[0]}px`, 
                     height: `${dimensions[1]}px`,
                 }}/>
                 <pre ref={preRef} style={{
-                    display: show ? "block" : "none",
                     backgroundColor: settings.invertedMode ? "white" : "black",
                     color: settings.invertedMode ? "black" : "white", 
                     fontSize: `${fontSize}px`, 
@@ -133,8 +152,17 @@ export const AsciiPlayer = ({ videoRef, settings }) => {
                     position: 'absolute',
                     top: 0,
                     left: 0,
+                    clipPath: `inset(0 0 0 ${hideLeft}%)`
                 }}><b>{asciiFrame}</b></pre>
             </div>
+            <input type="range" min="0" max="100" 
+                value={hideLeft} 
+                onChange={handleHideLeftSlider} 
+                style={{ 
+                    width: `${dimensions[0]}px`, 
+                    display: dimensions[0] > 0 ? "inherit" : "none" 
+                }}
+            />
         </>
     )
 }

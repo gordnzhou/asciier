@@ -1,11 +1,12 @@
+import { Metadata } from 'next';
 import '../styles.css';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'ASCIIer',
-    description: "Website for converting videos into animated ASCII art."
+    description: 'Website for converting videos into animated ASCII art.',
 }
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children } : { children: React.ReactNode }) {
     return (
         <html lang="en">
             <body>

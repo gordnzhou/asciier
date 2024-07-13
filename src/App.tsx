@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { ChangeEvent, ChangeEventHandler, EventHandler, MouseEventHandler, useRef, useState } from "react";
 import "./App.css";
 
 import { AsciiPlayer } from "./AsciiPlayer";
@@ -33,14 +33,18 @@ Video Player Page
 */
 
 function App() {
-    const [playing, setPlaying] = useState(true);
-    const videoRef = useRef();
+    const [playing, setPlaying] = useState<boolean>(true);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
     const [pixelsPerChar, setPixelsPerChar] = useState(5);
     const [highContrastMode,  setHighContrastMode] = useState(false);
     const [invertedMode, setInvertedMode] = useState(false);
 
-    const handleFileInput = (event) => {
+    const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files === null) {
+            return;
+        }
+
         let file = event.target.files[0];
 
         if (file === undefined) {
@@ -57,18 +61,30 @@ function App() {
             return;
         }
 
-        videoRef.current.src = URL.createObjectURL(file);
+        if (videoRef.current) {
+            videoRef.current.src = URL.createObjectURL(file);
+        }
     };
 
-    const handleCharSizeSlider = (event) => setPixelsPerChar(event.target.value);
+    const handleCharSizeSlider = (event: ChangeEvent<HTMLInputElement>) => {
+        setPixelsPerChar(Number(event.target.value));
+    }
 
-    const handleHighContrastModeCheckBox = (event) => setHighContrastMode(!highContrastMode);
+    const handleHighContrastModeCheckBox = (_event: ChangeEvent<HTMLInputElement>) => {
+        setHighContrastMode(!highContrastMode);
+    }
 
-    const handleInvertedModeCheckbox = (event) => setInvertedMode(!invertedMode);
+    const handleInvertedModeCheckbox = (_event: ChangeEvent<HTMLInputElement>) => {
+        setInvertedMode(!invertedMode);
+    }
 
-    const handleVideoPause = (event) => {
-        if (videoRef.current && videoRef.paused !== playing) {
-            setPlaying(videoRef.paused);
+    const handleVideoPause: MouseEventHandler<HTMLButtonElement> = (_event: any) => {
+        if (!videoRef.current) {
+            return;
+        }
+
+        if (videoRef.current.paused !== playing) {
+            setPlaying(videoRef.current.paused);
         }
 
         if (playing) {
@@ -80,15 +96,15 @@ function App() {
         setPlaying(!playing);
     };
 
-    const handleVideoRestart = (event) => {
+    const handleVideoRestart: MouseEventHandler<HTMLButtonElement> = (_event: any) => {
         if (videoRef.current) {
             videoRef.current.currentTime = 0;
         }
     };
 
-    const handleVolumeChange = (event) => {
+    const handleVolumeChange = (event: ChangeEvent<HTMLInputElement>) => {
         if (videoRef.current) {
-            videoRef.current.volume = event.target.value;
+            videoRef.current.volume = Number(event.target.value);
         }
     }
 
@@ -121,8 +137,8 @@ function App() {
                     <label htmlFor="volumeSlider">Volume</label>
                     <input id="volumeSlider" type="range" min="0" max="1" step="0.1" onChange={handleVolumeChange}/>
                 </div>
-
-                <AsciiPlayer videoRef={videoRef} settings={{pixelsPerChar: pixelsPerChar, highContrastMode, invertedMode}}/>
+  
+                {videoRef && <AsciiPlayer videoRef={videoRef} settings={{pixelsPerChar: pixelsPerChar, highContrastMode, invertedMode}}/>}
             </header>     
         </div>
     );
