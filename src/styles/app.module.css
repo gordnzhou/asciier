@@ -1,23 +1,18 @@
-.appDark {
+.app {
     text-align: center;
-    background-color: #282c34;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
     font-size: calc(10px + 2vmin);
-    color: white;
+    transition: background-color 1s;
+}
+
+.appDark {
+    background-color: #21212b;
+    color: #f7f5f5f4;
 }
 
 .appLight {
-    text-align: center;
     background-color: white;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
     color: #282c34;
 }
